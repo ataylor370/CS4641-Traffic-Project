@@ -52,7 +52,7 @@ class RandomForest_Boosted:
                                     print(f"road type error in point {reader[0][1]} with the following road-type: {reader[2][1]}")
                                 
                                 # Determining day
-                                day = reader[3][i]
+                                day = reader[3][j]
                                 day = day.strip()
                                 if day in day_encodings: 
                                     day_encoded = day_encodings[day]
@@ -66,17 +66,21 @@ class RandomForest_Boosted:
                                 if counts != "": 
                                     counts_split = [int(x) for x in counts.split(":")]
                                     count_sum = sum(counts_split)
-                                    counts_proportion = [x / count_sum for x in counts_split]
+                                    if count_sum == 0 : 
+                                        counts_proportion = [0 for i in range(15)]
+                                    else: 
+                                        counts_proportion = [x / count_sum for x in counts_split]
                                 else: 
                                     # null readings for all 13 proportions
                                     counts_proportion = [np.nan for i in range(15)]
                                 row = [road_type_encoded, day_encoded, time] + counts_proportion
                                 # Determing throughput
-                                throughput = reader[i][j] 
+                                throughput = reader[i][j]
                                 if throughput == "": 
                                     throughput = np.nan
-                                # Append features and output if output exists
                                 else: 
+                                    throughput = float(throughput)
+                                    # Append features and output if output exists
                                     features.append(row)
                                     outputs.append(throughput)
                                 
@@ -85,7 +89,7 @@ class RandomForest_Boosted:
         return features,outputs
 
     def KFolds(self,features,outputs, k): 
-        indexes = range(len(features))
+        indexes = list(range(len(features)))
         random.shuffle(indexes)
         splits = np.array_split(indexes, k)
         best_model = None
@@ -129,9 +133,9 @@ class RandomForest_Boosted:
     def test(self,model, features, outputs): 
         prediction = model.predict(features)
         return mean_squared_error(outputs, prediction)
-    
-features, outputs = RandomForest_Boosted.aggregate()
-best_model, best_hyper_parameters, best_loss = RandomForest_Boosted.Kfolds(features,outputs, 10)
+random_forest = RandomForest_Boosted()
+features, outputs = random_forest.aggregate()
+best_model, best_hyper_parameters, best_loss = random_forest.KFolds(features,outputs, 10)
 print(f"Best model hyperaparameters: {best_hyper_parameters}, Best model Accuracy {best_loss}" )
 
                         
