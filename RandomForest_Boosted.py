@@ -15,6 +15,13 @@ class RandomForest_Boosted:
     Local_directory = Path("Local")
 
     directories = [Luke_Local_directory, Major_Collector_directory, Principal_Arterial_directory, Minor_Arterial_directory, Local_directory]
+    throughput_lanes = {}
+    with open("ThroughlanePreprocessing/sheet5_throughlanes.csv", mode = 'r') as file: 
+        reader = list(csv.reader(file))
+        for i in range(1,len(reader)): 
+            point = reader[i][0]
+            lanes = reader[i][3]
+            throughput_lanes[point] = int(lanes)
     def aggregate(self):
         features = []
         outputs = []
@@ -73,7 +80,12 @@ class RandomForest_Boosted:
                                 else: 
                                     # null readings for all 13 proportions
                                     counts_proportion = [np.nan for i in range(15)]
-                                row = [road_type_encoded, day_encoded, time] + counts_proportion
+                                # Adding throughput lanes
+                                point = reader[0][1]
+                                lanes = self.throughput_lanes[point]
+                                row = [road_type_encoded, day_encoded, time, lanes] + counts_proportion
+                                
+
                                 # Determing throughput
                                 throughput = reader[i][j]
                                 if throughput == "": 
@@ -83,7 +95,6 @@ class RandomForest_Boosted:
                                     # Append features and output if output exists
                                     features.append(row)
                                     outputs.append(throughput)
-                                
         features = np.array(features)
         outputs = np.array(outputs)
         return features,outputs
@@ -93,7 +104,7 @@ class RandomForest_Boosted:
         random.shuffle(indexes)
         splits = np.array_split(indexes, k)
         best_model = None
-        best_loss = float('inf')
+        best_loss = 0
         best_hyper_parameters = None
         for i in range(k): 
             test_features = features[splits[i]]          
@@ -104,7 +115,7 @@ class RandomForest_Boosted:
             train_outputs   = outputs[train_indices]
             model, hyper_parameters = self.train(train_features, train_outputs)
             loss = self.test(model,test_features, test_outputs)
-            if loss < best_loss: 
+            if loss > best_loss: 
                 best_model = model
                 best_hyper_parameters = hyper_parameters
                 best_loss = loss
@@ -132,11 +143,13 @@ class RandomForest_Boosted:
         return grid_search.best_estimator_, grid_search.best_params_
     def test(self,model, features, outputs): 
         prediction = model.predict(features)
-        return mean_squared_error(outputs, prediction)
+        r2 = r2_score(outputs, prediction)
+        print(r2)
+        return r2
+    
 random_forest = RandomForest_Boosted()
 features, outputs = random_forest.aggregate()
 best_model, best_hyper_parameters, best_loss = random_forest.KFolds(features,outputs, 10)
 print(f"Best model hyperaparameters: {best_hyper_parameters}, Best model Accuracy {best_loss}" )
-
-                        
+         
                 
